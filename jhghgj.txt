@@ -1,0 +1,142 @@
+# --------------------------------------------
+# Step 1: Import libraries
+# --------------------------------------------
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+
+# Load MNIST dataset (with labels)
+from tensorflow.keras.datasets import mnist
+
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# Normalize between 0 and 1
+x_train = x_train.astype('float32') / 255.0
+x_test = x_test.astype('float32') / 255.0
+
+# Flatten for Dense Autoencoder
+x_train = x_train.reshape((len(x_train), -1))
+x_test = x_test.reshape((len(x_test), -1))
+
+# --------------------------------------------
+# Step 3: Add random Gaussian noise
+# --------------------------------------------
+noise_factor = 0.5
+x_train_noisy = x_train + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_train.shape)
+x_test_noisy = x_test + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_test.shape)
+
+# Clip pixel values between 0 and 1
+x_train_noisy = np.clip(x_train_noisy, 0., 1.)
+x_test_noisy = np.clip(x_test_noisy, 0., 1.)
+
+# --------------------------------------------
+# Step 4: Define the Autoencoder
+# (same structure you mentioned)
+# --------------------------------------------
+input_dim = x_train.shape[1]
+
+autoencoder = tf.keras.Sequential([
+    tf.keras.layers.Input(shape=(input_dim,)),
+    tf.keras.layers.Dense(32, activation='relu'),   # Encoder
+    tf.keras.layers.Dense(16, activation='relu'),   # Encoder
+    tf.keras.layers.Dense(8, activation='relu'),    # Bottleneck (latent representation)
+    tf.keras.layers.Dense(16, activation='relu'),   # Decoder
+    tf.keras.layers.Dense(32, activation='relu'),   # Decoder
+    tf.keras.layers.Dense(input_dim, activation='sigmoid')  # Output
+])
+
+autoencoder.compile(optimizer='adam', loss='mse')
+
+# --------------------------------------------
+# Step 5: Train the Autoencoder
+# --------------------------------------------
+history = autoencoder.fit(
+    x_train_noisy, x_train,
+    epochs=30,
+    batch_size=256,
+    shuffle=True,
+    validation_data=(x_test_noisy, x_test)
+)
+
+# --------------------------------------------
+# Step 6: Evaluate and visualize results with labels
+# --------------------------------------------
+decoded_imgs = autoencoder.predict(x_test_noisy)
+
+# Load MNIST again with labels for display
+(_, y_train_labels), (_, y_test_labels) = tf.keras.datasets.mnist.load_data()
+
+# Pick random sample
+i = random.randint(0, len(x_test_noisy) - 1)
+true_label = y_test_labels[i]
+
+plt.figure(figsize=(9, 3))
+
+# Noisy Input
+plt.subplot(1, 3, 1)
+plt.imshow(x_test_noisy[i].reshape(28, 28), cmap='gray')
+plt.title(f"Noisy Input\n(Label: {true_label})")
+plt.axis('off')
+
+# Denoised Output
+plt.subplot(1, 3, 2)
+plt.imshow(decoded_imgs[i].reshape(28, 28), cmap='gray')
+plt.title("Denoised Output")
+plt.axis('off')
+
+# Original Clean Image
+plt.subplot(1, 3, 3)
+plt.imshow(x_test[i].reshape(28, 28), cmap='gray')
+plt.title("Original Clean Image")
+plt.axis('off')
+
+plt.show()
+
+
+# --------------------------------------------
+# Step 7: Plot training history
+# --------------------------------------------
+plt.figure(figsize=(8, 4))
+plt.plot(history.history['loss'], label='Training Loss', color='blue')
+plt.plot(history.history['val_loss'], label='Validation Loss', color='orange')
+plt.title("Training vs Validation Loss")
+plt.xlabel("Epochs")
+plt.ylabel("Loss (MSE)")
+plt.legend()
+plt.show()
+
+# --------------------------------------------
+# Step: Confusion Matrix and Classification Check
+# --------------------------------------------
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Train a simple classifier on clean training data (for comparison)
+clf = LogisticRegression(max_iter=200)
+clf.fit(x_train, y_train)
+
+# Predict labels for noisy and denoised images
+pred_noisy = clf.predict(x_test_noisy)
+pred_denoised = clf.predict(decoded_imgs)
+
+# Generate confusion matrices
+cm_noisy = confusion_matrix(y_test, pred_noisy)
+cm_denoised = confusion_matrix(y_test, pred_denoised)
+
+# Plot confusion matrix for denoised data
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm_denoised, annot=False, cmap='Blues')
+plt.title("Confusion Matrix – Denoised MNIST")
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+plt.show()
+
+# Print classification reports
+print("Classification Report (Noisy Images):")
+print(classification_report(y_test, pred_noisy))
+
+print("\nClassification Report (Denoised Images):")
+print(classification_report(y_test, pred_denoised))
