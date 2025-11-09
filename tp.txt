@@ -1,0 +1,82 @@
+# Demonstration of TensorFlow and PyTorch
+# ----------------------------------------
+# AIM: Demonstrate use of TensorFlow and PyTorch by implementing simple code in Python
+
+# 🔹 TensorFlow Section
+import tensorflow as tf
+import numpy as np
+
+print("=== TensorFlow Demo ===")
+# Create random tensors
+a = tf.random.uniform((3, 3), minval=1, maxval=10, dtype=tf.int32)
+b = tf.random.uniform((3, 3), minval=1, maxval=10, dtype=tf.int32)
+
+print("Tensor A:\n", a.numpy())
+print("Tensor B:\n", b.numpy())
+
+# Basic operations
+print("\nAddition:\n", tf.add(a, b).numpy())
+print("Subtraction:\n", tf.subtract(a, b).numpy())
+print("Element-wise Multiplication:\n", tf.multiply(a, b).numpy())
+print("Matrix Multiplication:\n", tf.matmul(a, b).numpy())
+print("Division:\n", tf.divide(tf.cast(a, tf.float32), tf.cast(b, tf.float32)).numpy())
+
+# Extra operations
+print("\nTranspose of A:\n", tf.transpose(a).numpy())
+print("Mean of A:", tf.reduce_mean(tf.cast(a, tf.float32)).numpy())
+print("Max of B:", tf.reduce_max(b).numpy())
+
+# Broadcasting example
+c = tf.constant([1, 2, 3])
+print("\nBroadcasted Addition:\n", a + c)
+
+# Reshape and slicing
+arr = tf.constant(np.arange(1, 10), shape=(3, 3))
+print("\nOriginal Tensor:\n", arr.numpy())
+print("Sliced [0:2, 1:3]:\n", arr[0:2, 1:3].numpy())
+
+# Gradient computation
+x = tf.Variable(3.0)
+with tf.GradientTape() as tape:
+    y = x**2 + 5*x + 2
+grad = tape.gradient(y, x)
+print("\nGradient of y = x² + 5x + 2 at x=3:", grad.numpy())
+
+
+# 🔹 PyTorch Section
+import torch
+
+print("\n=== PyTorch Demo ===")
+# Create random tensors
+A = torch.randint(1, 10, (3, 3))
+B = torch.randint(1, 10, (3, 3))
+
+print("Tensor A:\n", A)
+print("Tensor B:\n", B)
+
+# Basic operations
+print("\nAddition:\n", A + B)
+print("Subtraction:\n", A - B)
+print("Element-wise Multiplication:\n", A * B)
+print("Matrix Multiplication:\n", torch.mm(A, B))
+print("Division:\n", A.float() / B.float())
+
+# Extra operations
+print("\nTranspose of A:\n", A.T)
+print("Mean of A:", A.float().mean().item())
+print("Max of B:", B.max().item())
+
+# Broadcasting example
+c = torch.tensor([1, 2, 3])
+print("\nBroadcasted Addition:\n", A + c)
+
+# Reshape and slicing
+C = torch.arange(1, 10).reshape(3, 3)
+print("\nOriginal Tensor:\n", C)
+print("Sliced [0:2, 1:3]:\n", C[0:2, 1:3])
+
+# Gradient computation
+x = torch.tensor(3.0, requires_grad=True)
+y = x**2 + 5*x + 2
+y.backward()
+print("\nGradient of y = x² + 5x + 2 at x=3:", x.grad.item())

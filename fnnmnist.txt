@@ -1,0 +1,66 @@
+# --------------------------------------------
+# Feedforward Neural Network (FNN) - MNIST CSV
+# --------------------------------------------
+
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.utils import to_categorical
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+data = pd.read_csv(r"C:\Users\marta\Downloads\MNIST-20221031T095906Z-001\MNIST\mnist_784_csv.csv")
+
+data
+
+# Split into features and labels
+X = data.iloc[:, :-1].values / 255.0   # Normalize pixel values (0–1)
+y = data.iloc[:, -1].values            # Last column = label
+
+# Split into train/test (80–20)
+split = int(0.8 * len(X))
+x_train, x_test = X[:split], X[split:]
+y_train, y_test = y[:split], y[split:]
+
+# One-hot encode labels
+y_train = to_categorical(y_train, num_classes=10)
+y_test = to_categorical(y_test, num_classes=10)
+
+# Display dataset info
+print("Training data:", x_train.shape, y_train.shape)
+print("Testing data:", x_test.shape, y_test.shape)
+
+# 2️⃣ Build Feedforward Neural Network (FNN)
+model = models.Sequential([
+    layers.Dense(512, activation='relu', input_shape=(784,)),
+    layers.Dense(256, activation='relu'),
+    layers.Dense(10, activation='softmax')
+])
+
+# 3️⃣ Compile the model
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# 4️⃣ Train the model
+print("\nTraining model...")
+model.fit(x_train, y_train, epochs=5, batch_size=128, validation_split=0.1, verbose=2)
+
+# 5️⃣ Evaluate the model
+test_loss, test_acc = model.evaluate(x_test, y_test)
+print(f"\nTest Accuracy: {test_acc*100:.2f}%")
+
+# 6️⃣ Predict first 10 test samples
+predictions = model.predict(x_test[:10])
+predicted_labels = np.argmax(predictions, axis=1)
+true_labels = np.argmax(y_test[:10], axis=1)
+
+# 7️⃣ Display images with predicted vs true labels
+plt.figure(figsize=(10, 4))
+for i in range(10):
+    plt.subplot(2, 5, i + 1)
+    plt.imshow(x_test[i].reshape(28, 28), cmap='gray')
+    plt.title(f"Pred: {predicted_labels[i]}\nTrue: {true_labels[i]}")
+    plt.axis('off')
+plt.tight_layout()
+plt.show()

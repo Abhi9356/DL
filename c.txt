@@ -1,0 +1,130 @@
+# Importing necessary libraries for text preprocessing, modeling, and visualization
+
+import numpy as np
+import re
+from tensorflow.keras.preprocessing.text import Tokenizer
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Embedding, Lambda
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Defining the input text data that will be used to train the CBOW model
+data = """Artificial intelligence is transforming the world rapidly. It helps machines learn from experience and perform human-like tasks. AI systems can analyze data, recognize patterns, and make intelligent decisions. Machine learning and deep learning are subfields of AI. These technologies are used in healthcare, finance, and robotics."""
+
+data
+
+
+# Seperating the text into sentences for further processing
+sentences = data.split('.')
+
+sentences
+
+# Cleaning and preprocessing each sentence
+clean_sent=[]
+for sentence in sentences:
+    if sentence=="":
+        continue
+    sentence = re.sub('[^A-Za-z0-9]+', ' ', (sentence))
+    sentence = re.sub(r'(?:^| )\w (?:$| )', ' ', (sentence)).strip()
+    sentence = sentence.lower()
+    clean_sent.append(sentence)
+
+clean_sent
+
+# Tokenizing the text data into integer sequences
+tokenizer = Tokenizer()
+# Fitting the tokenizer on the cleaned sentences and converting them to sequences
+tokenizer.fit_on_texts(clean_sent)
+sequences = tokenizer.texts_to_sequences(clean_sent)
+print("\nSequences: ",sequences)
+
+# Creating word-index mappings
+index_to_word = {}
+word_to_index = {}
+
+# Mapping words to their corresponding indices and vice versa
+
+for i, sequence in enumerate(sequences):
+#     print(sequence)
+    word_in_sentence = clean_sent[i].split()
+    #     print(word_in_sentence)
+
+    for j, value in enumerate(sequence):
+        index_to_word[value] = word_in_sentence[j]
+        word_to_index[word_in_sentence[j]] = value
+
+print("\nWord to Index: ",word_to_index)
+print("\nIndex to Word: ",index_to_word)
+
+ # Defining model parameters
+ vocab_size = len(tokenizer.word_index) + 1
+ emb_size = 10
+ context_size = 4
+
+
+# Generating context-target pairs for CBOW model training
+contexts = []
+targets = []
+for sequence in sequences:
+    for i in range(context_size, len(sequence) - context_size):
+        target = sequence[i]
+        context = [sequence[i - 2], sequence[i - 1], sequence[i + 1], sequence[i + 2]]
+         #         print(context)
+        contexts.append(context)
+        targets.append(target)
+
+ print(contexts, "\n")
+ print(targets)
+
+# Training the CBOW model on the generated context and target pairs
+for i in range(5):
+    words = []
+    target = index_to_word.get(targets[i])
+    for j in contexts[i]:
+        words.append(index_to_word.get(j))
+    print(words," -> ", target)
+
+X = np.array(contexts)
+Y = np.array(targets)
+
+# Defining the CBOW model architecture
+model = Sequential([
+# Embedding layer to learn word vector representations
+    Embedding(input_dim=vocab_size, output_dim=emb_size, input_length=2*context_size),
+    Lambda(lambda x: tf.reduce_mean(x, axis=1)),
+    Dense(256, activation='relu'),
+    Dense(512, activation='relu'),
+    Dense(vocab_size, activation='softmax')
+ ])
+
+# Compiling the CBOW model with appropriate loss function and optimizer
+model.compile(loss='sparse_categorical_crossentropy',
+optimizer='adam', metrics=['accuracy'])
+
+# Training the CBOW model on the generated context and target pairs
+history = model.fit(X, Y, epochs=40,verbose=0)
+
+
+# Visualizing the training history of the CBOW model
+sns.lineplot(model.history.history)
+
+# test model: select some sentences from above paragraph
+test_sentences = [
+    "artificial intelligence is transforming",
+    "machines learn from",
+    "analyze data recognize and",
+]
+
+
+# Making predictions using the trained CBOW model
+
+print("\n Predictions:\n")
+
+for sent in test_sentences:
+    test_words = sent.split(" ")
+    x_test = [word_to_index.get(i, 0) for i in test_words]
+    x_test = np.array([x_test])
+    pred = model.predict(x_test, verbose=0)
+    pred = np.argmax(pred[0])
+    print(f"Input: {test_words}\n→ Predicted next word: {index_to_word.get(pred)}\n")

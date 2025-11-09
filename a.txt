@@ -1,0 +1,52 @@
+# -----------------------------
+# SIMPLE ANOMALY DETECTION
+# -----------------------------
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+
+# Load data
+data = pd.read_csv(r"C:\Users\marta\Downloads\Credit Card Customer Data - Credit Card Customer Data.csv")
+X = data.drop(['Sl_No', 'Customer Key'], axis=1)
+X_scaled = StandardScaler().fit_transform(X)
+
+# Define Autoencoder
+input_dim = X_scaled.shape[1]
+autoencoder = tf.keras.Sequential([
+    tf.keras.layers.Dense(32, activation='relu', input_shape=(input_dim,)),
+    tf.keras.layers.Dense(16, activation='relu'),
+    tf.keras.layers.Dense(8, activation='relu'),
+    tf.keras.layers.Dense(16, activation='relu'),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(input_dim, activation='sigmoid')
+])
+
+autoencoder.compile(optimizer='adam', loss='mse')
+
+# Train
+history = autoencoder.fit(X_scaled, X_scaled, epochs=20, batch_size=64, validation_split=0.2, verbose=0)
+
+# Reconstruction error
+recon = autoencoder.predict(X_scaled)
+mse = np.mean(np.square(X_scaled - recon), axis=1)
+threshold = np.percentile(mse, 95)
+data['Anomaly'] = (mse > threshold).astype(int)
+
+# Plot
+plt.hist(mse, bins=50)
+plt.axvline(threshold, color='r', linestyle='--')
+plt.title("Reconstruction Error")
+plt.show()
+
+print("Sample anomalies:\n", data[data['Anomaly'] == 1].head())
+
+plt.figure(figsize=(8, 5))
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Training vs Validation Loss (Anomaly Detection)')
+plt.xlabel('Epochs')
+plt.ylabel('MSE Loss')
+plt.legend()
+plt.show()

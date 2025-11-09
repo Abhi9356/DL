@@ -1,0 +1,56 @@
+# -----------------------------
+# SIMPLE SPARSE AUTOENCODER (MNIST CSV)
+# -----------------------------
+import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Load MNIST from CSV
+data = pd.read_csv(r"C:\Users\marta\Downloads\MNIST-20221031T095906Z-001\MNIST\mnist_784_csv.csv")
+
+# Normalize and reshape
+X = data.iloc[:, :-1].values / 255.0
+X = X.reshape(-1, 784)
+
+# Split into train/test
+split = int(0.8 * len(X))
+x_train, x_test = X[:split], X[split:]
+
+# Build Sparse Autoencoder
+from tensorflow.keras import regularizers
+
+autoencoder = tf.keras.Sequential([
+    tf.keras.layers.Dense(32, activation='relu', input_shape=(784,)),
+    tf.keras.layers.Dense(16, activation='relu'),
+    # 👇 Sparsity constraint added here
+    tf.keras.layers.Dense(8, activation='relu', activity_regularizer=regularizers.l1(1e-5)),
+    tf.keras.layers.Dense(16, activation='relu'),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(784, activation='sigmoid')
+])
+
+autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
+
+# Train
+autoencoder.fit(
+    x_train, x_train,
+    epochs=10,
+    batch_size=128,
+    verbose=1,
+    validation_data=(x_test, x_test)
+)
+
+# Reconstruct
+decoded = autoencoder.predict(x_test)
+
+# Visualize Original vs Reconstructed
+plt.figure(figsize=(10, 4))
+for i in range(5):
+    plt.subplot(2, 5, i + 1)
+    plt.imshow(x_test[i].reshape(28, 28), cmap='gray')
+    plt.axis('off')
+    plt.subplot(2, 5, i + 6)
+    plt.imshow(decoded[i].reshape(28, 28), cmap='gray')
+    plt.axis('off')
+plt.show()
